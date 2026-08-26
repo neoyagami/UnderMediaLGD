@@ -1,0 +1,37 @@
+# Kernel external-module build output
+*.o
+*.d
+*.ko
+*.mod
+*.mod.c
+*.order
+*.symvers
+.*.cmd
+.tmp_versions/
+
+# Captures and investigation artifacts do not belong in the public tree
+*.bin
+*.dll
+*.exe
+*.sys
+*.wav
+*.raw
+*.yuv
+*.yuyv
+*.p010
+*.pcap
+*.log
+*.png
+*.jpg
+*.jpeg
+!assets/no-signal-penguin.png
+*.gpr
+*.gbf
+*.rep/
+
+# Editors and packaging
+*~
+*.swp
+.idea/
+.vscode/
+dist/

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Load the portably installed GC570D module automatically during system boot.
+
+[Unit]
+Description=AVerMedia Live Gamer DUO GC570D driver
+After=local-fs.target systemd-modules-load.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/gc570d-load
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
