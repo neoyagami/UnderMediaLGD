@@ -1,5 +1,18 @@
 # Capture, audio and RGB usage
 
+The driver exposes video through Video4Linux2 and audio through ALSA. PipeWire
+and WirePlumber are desktop integration layers; they are not required for
+direct V4L2 or ALSA capture.
+
+```text
+HDMI video -> gc570d driver -> V4L2 nodes -> capture application
+HDMI audio -> gc570d driver -> ALSA PCM -> direct ALSA application
+                                      -> PipeWire -> PulseAudio-compatible source
+                                           ^
+                                           |
+                                     WirePlumber policy
+```
+
 ## Find the V4L2 nodes
 
 Device numbers are assigned dynamically. Use names instead of assuming
@@ -28,14 +41,28 @@ For simultaneous capture, start HDMI IN 2 first, wait for it to stream, and
 then start HDMI IN 1. Reverse order is intentionally rejected because it has
 not yet been safely validated.
 
-## OBS video
+## Video4Linux2 capture
 
-1. Load the module and wait for automatic HDMI IN 1 initialization to report
-   `auto_ready=yes` in `status.sh`.
-2. Add a Video Capture Device for `gc570d-hdmi2`.
-3. Add/start HDMI IN 2 first.
-4. Add a second Video Capture Device for `gc570d-hdmi1`.
-5. Select YUYV, the desired exposed output size, and 60 fps.
+Load the module and wait for automatic HDMI IN 1 initialization to report
+`auto_ready=yes` in `status.sh`. Query each node before capture to confirm its
+advertised format and current input status:
+
+```sh
+v4l2-ctl -d /dev/video1 --get-fmt-video --get-input
+v4l2-ctl -d /dev/video2 --get-fmt-video --get-input
+```
+
+Use the device names reported earlier rather than assuming that these example
+node numbers match the local system. A short memory-mapped streaming test can
+discard the captured frames while checking that buffers and timestamps advance:
+
+```sh
+v4l2-ctl -d /dev/video1 --stream-mmap --stream-count=300 --stream-to=/dev/null
+```
+
+Any V4L2 application can consume the nodes directly. When opening both inputs,
+start `gc570d-hdmi2` first, wait until it is streaming, and then start
+`gc570d-hdmi1`.
 
 The HDMI OUT signal remains at the supported source mode. HDMI IN 1 capture is
 a separate SDR path capped at 60 fps and 1920x1080. For example, validated
@@ -68,7 +95,7 @@ restarts only HDMI IN 1 audio DMA and real stereo audio returns without closing
 the audio client or selecting the source again. This video-and-audio recovery
 was physically validated while HDMI IN 2 continued operating.
 
-## Direct ALSA tests
+## Direct ALSA capture
 
 List the card and PCM device numbers:
 
@@ -84,18 +111,26 @@ arecord -D hw:DUO,0 -f S16_LE -r 48000 -c 2 -d 5 hdmi2.wav
 arecord -D hw:DUO,1 -f S16_LE -r 48000 -c 2 -d 5 hdmi1.wav
 ```
 
+These commands open the kernel ALSA PCM devices directly and do not pass
+through PipeWire, WirePlumber or the PulseAudio compatibility layer. Both
+devices provide stereo S16_LE audio at 48 kHz.
+
 If the identifier differs, use the card number printed by `arecord -l`, for
 example `hw:4,1`. Each PCM now owns an independent reference to the shared
 bridge IRQ and can prepare its matching receiver even when the corresponding
-V4L2 stream is not open. Concurrent saved-scene restoration of both videos and
-both audios was physically validated in OBS.
+V4L2 stream is not open. Both PCM inputs can be open at the same time and are
+independent of whether a video capture client is running.
 
-## PipeWire-Pulse / PulseAudio-compatible OBS sources
+## PipeWire, WirePlumber and PulseAudio compatibility
 
-Modern Bazzite uses PipeWire and WirePlumber while presenting a PulseAudio-
-compatible API to OBS. `install-portable.sh` installs the supplied WirePlumber
-policy system-wide, so it is applied automatically at desktop login. To apply
-it immediately to an already-running session, run:
+The kernel driver exposes the two inputs as ALSA PCM capture devices. PipeWire
+can publish those PCMs to desktop applications, WirePlumber selects and
+configures the card profile, and `pipewire-pulse` provides the PulseAudio-
+compatible source API used by many applications.
+
+`install-portable.sh` installs the supplied WirePlumber policy system-wide, so
+it is applied automatically at desktop login. To apply it immediately to an
+already-running session, run this as the desktop user:
 
 ```sh
 ./scripts/setup-pipewire.sh
@@ -103,17 +138,38 @@ it immediately to an already-running session, run:
 
 The refresh script also installs a per-user copy and restarts the user's
 PipeWire/WirePlumber services, so current audio streams are briefly
-interrupted. The expected source names are `HDMI 2
-(Capture Only)` for ALSA device 0 and `HDMI 1 (Passthrough)` for ALSA device 1.
-If OBS has stale source references after a profile change, select both sources
-again.
+interrupted. The expected source descriptions are `HDMI 2 (Capture Only)` for
+ALSA device 0 and `HDMI 1 (Passthrough)` for ALSA device 1. Inspect the sources
+published through the PulseAudio-compatible API with:
 
-If `arecord -l` shows the `DUO` card but PulseAudio-compatible applications do
-not show either HDMI source, inspect the card with `pactl list cards`. An active
-profile of `off` means ALSA is healthy but PipeWire has not published its PCM
-inputs. Run `./scripts/setup-pipewire.sh` as the desktop user to refresh the
-WirePlumber policy and activate `pro-audio`. A source state of `SUSPENDED` is
-normal while no application is recording it.
+```sh
+pactl list short sources
+pactl list sources
+```
+
+The first command prints the internal source names. One of those names can be
+passed to a PulseAudio-compatible recorder for an end-to-end test:
+
+```sh
+parec --device=INTERNAL_SOURCE_NAME --file-format=wav pipewire-test.wav
+```
+
+Stop the recording with `Ctrl+C`.
+
+If `arecord -l` shows the `DUO` card but `pactl` does not show either HDMI
+source, inspect the card with `pactl list cards`. An active profile of `off`
+means ALSA is healthy but PipeWire has not published its PCM inputs. Run
+`./scripts/setup-pipewire.sh` as the desktop user to refresh the WirePlumber
+policy and activate `pro-audio`. A source state of `SUSPENDED` is normal while
+no application is recording it.
+
+## Optional streaming-application test
+
+OBS was the original target application and is useful as an integration test,
+but it is not required to use the driver. For a simultaneous test, add both
+V4L2 devices in the required HDMI IN 2 then HDMI IN 1 order, then select the
+two PulseAudio-compatible HDMI sources. This verifies that a streaming client
+can keep both video nodes and both desktop-audio sources active together.
 
 ## RGB enclosure lighting
 

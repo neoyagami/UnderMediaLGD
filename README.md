@@ -4,7 +4,9 @@ Unofficial Linux support for the AVerMedia Live Gamer DUO GC570D
 (`1461:0054`, subsystem `1461:5700`). The project exposes both HDMI inputs to
 Video4Linux2 and ALSA, initializes HDMI IN 1 passthrough, performs the tested
 HDR-to-SDR/downscale capture path, and exposes the enclosure lighting through
-the standard Linux multicolor LED class.
+the standard Linux multicolor LED class. A supplied WirePlumber policy
+publishes both ALSA inputs through PipeWire and its PulseAudio-compatible API
+for desktop applications.
 
 This is experimental software for one exact PCI subsystem. It is not an
 official AVerMedia project and is not endorsed by AVerMedia. Read
@@ -19,13 +21,13 @@ passthrough, two capture inputs, their audio and the enclosure lighting were
 all part of my normal use. I did not want to replace the card; I wanted to
 understand the hardware I own and make it useful on Linux.
 
-Ghidra and AI agents used as engineering tools to study the behavior of the official Windows driver and
-reimplement the required hardware operations through Linux PCI, V4L2, ALSA and
-LED interfaces. Research priorities, hypotheses, hardware trials and
-publication decisions were determined through direct human review rather than
-delegated to the tools. The goal is learning and interoperability, and the
-personal result is simple: this card no longer requires Windows, so I can
-finally leave Windows behind.
+Ghidra and AI agents were used as engineering tools to study the behavior of
+the official Windows driver and reimplement the required hardware operations
+through Linux PCI, V4L2, ALSA and LED interfaces. Research priorities,
+hypotheses, hardware trials and publication decisions were determined through
+direct human review rather than delegated to the tools. The goal is learning
+and interoperability, and the personal result is simple: this card no longer
+requires Windows, so I can finally leave Windows behind.
 
 A personal note: this repository is an experiment born partly out of
 desperation. I began without prior expertise in kernel drivers, HDMI state
@@ -46,8 +48,8 @@ Validated on the project hardware:
 | HDMI IN 1 native capture | 1280x720p60 SDR input captured as 1280x720 YUYV at 60 fps |
 | HDMI IN 2 capture | 1920x1080 YUYV at 60 fps |
 | HDMI IN 1 audio | `HDMI 1 (Passthrough)`, ALSA capture device 1, stereo S16_LE at 48 kHz; direct ALSA and PipeWire validated, including automatic recovery on the same open audio stream after disconnect/reconnect |
-| HDMI IN 2 audio | `HDMI 2 (Capture Only)`, ALSA capture device 0, stereo S16_LE at 48 kHz; direct ALSA and PipeWire/OBS validated |
-| Concurrent operation | Both V4L2 streams and both named audio sources; a saved OBS scene restored all four automatically, with no manual source reordering or recreation |
+| HDMI IN 2 audio | `HDMI 2 (Capture Only)`, ALSA capture device 0, stereo S16_LE at 48 kHz; direct ALSA and PipeWire validated |
+| Concurrent operation | Both V4L2 streams and both audio inputs active together through the tested ALSA/PipeWire path |
 | Hot-plug and disconnected inputs | Both V4L2 nodes concurrently supply the built-in generic no-signal frame at 1920x1080 YUYV/60 fps without video DMA; HDMI IN 1 and HDMI IN 2 each physically passed a complete live-to-placeholder-to-live cycle on the same open V4L2 stream, including HDMI IN 1 video and audio recovery while HDMI IN 2 remained active |
 | RGB enclosure | Standard `gc570d:rgb:status` multicolor LED, fixed RGB, single-color breathing and red/yellow/green/cyan/blue/magenta/white breathing cycle |
 
@@ -97,7 +99,7 @@ Each source, script, and integration file starts with an SPDX
 - GCC, make, binutils and the normal external-module toolchain.
 - V4L2, videobuf2, ALSA and multicolor LED kernel support.
 - `v4l2-ctl` for command-line video tests and `alsa-utils` for `arecord`.
-- PipeWire, WirePlumber and `pactl` for the tested desktop/OBS audio path.
+- PipeWire, WirePlumber and `pactl` for the tested desktop audio path.
 - Secure Boot disabled, or a locally signed module enrolled by the owner.
 
 Do not bind the card to a virtual machine or `vfio-pci` while loading this
@@ -122,8 +124,8 @@ sudo ./scripts/gc570d-load.sh
 The complete automatic negotiation normally takes about ten seconds. The
 module keeps retrying while it waits for the HDMI equipment.
 
-Publish both ALSA inputs through WirePlumber/PipeWire-Pulse for OBS. Run this
-as the desktop user, not with `sudo`:
+Publish both ALSA inputs through WirePlumber, PipeWire and the
+PulseAudio-compatible API. Run this as the desktop user, not with `sudo`:
 
 ```sh
 ./scripts/setup-pipewire.sh
@@ -146,8 +148,8 @@ module under `/lib/modules/$(uname -r)/extra/gc570d/` and runs `depmod`.
 On Bazzite/Fedora Atomic or another immutable system, use the portable
 installer. It keeps the module under `/var/lib/gc570d/<kernel>/` and installs
 small launchers under `/usr/local/sbin`. It also enables `gc570d.service` and
-installs the WirePlumber policy system-wide, so the driver and both OBS audio
-sources are available automatically after reboot:
+installs the WirePlumber policy system-wide, so the driver and both desktop
+audio sources are available automatically after reboot:
 
 ```sh
 sudo ./scripts/install-portable.sh
@@ -168,13 +170,15 @@ sudo ./scripts/gc570d-load.sh --hdmi2-only
 sudo ./scripts/gc570d-init-hdmi1.sh
 ```
 
-## OBS ordering
+## Simultaneous capture ordering
 
-For simultaneous video capture, add/start HDMI IN 2 first and HDMI IN 1
-second. The portable installation publishes the audio sources automatically;
-when running directly from a checkout, run `setup-pipewire.sh`. Then select
-`HDMI 2 (Capture Only)` and `HDMI 1 (Passthrough)`. If the PipeWire card
-profile is changed, OBS may need the sources to be selected again.
+Any application opening both V4L2 nodes must start HDMI IN 2 first and HDMI IN
+1 second. Direct ALSA clients can open `HDMI 2 (Capture Only)` and `HDMI 1
+(Passthrough)` independently. For desktop applications, the portable
+installation publishes both sources automatically through PipeWire; when
+running from a checkout, run `setup-pipewire.sh`. OBS was used to validate this
+four-source arrangement as the original streaming target, but it is not
+required to access any driver interface.
 
 ## Research and authorship disclosure
 
