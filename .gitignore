@@ -24,7 +24,7 @@
 *.png
 *.jpg
 *.jpeg
-!assets/no-signal-penguin.png
+!assets/no-signal.png
 *.gpr
 *.gbf
 *.rep/

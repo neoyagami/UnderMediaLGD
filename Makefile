@@ -16,10 +16,12 @@ gc570d-y := \
 KERNEL_RELEASE ?= $(shell uname -r)
 KDIR ?= /lib/modules/$(KERNEL_RELEASE)/build
 INSTALL_MOD_DIR ?= extra/gc570d
+NO_SIGNAL_SOURCE := assets/no-signal.png
+NO_SIGNAL_DATA := data/gc570d_no_signal_640x360.inc
 
-.PHONY: all clean install uninstall check
+.PHONY: all clean install uninstall check no-signal prepare-no-signal
 
-all:
+all: prepare-no-signal
 	$(MAKE) -C $(KDIR) M=$(CURDIR) modules
 
 clean:
@@ -33,6 +35,14 @@ install: all
 uninstall:
 	rm -f /lib/modules/$(KERNEL_RELEASE)/$(INSTALL_MOD_DIR)/gc570d.ko
 	depmod -a $(KERNEL_RELEASE)
+
+prepare-no-signal: $(NO_SIGNAL_DATA)
+
+$(NO_SIGNAL_DATA): $(NO_SIGNAL_SOURCE)
+	./scripts/generate-no-signal-asset.sh
+
+no-signal:
+	./scripts/generate-no-signal-asset.sh
 
 check:
 	sh -n scripts/*.sh

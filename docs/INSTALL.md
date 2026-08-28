@@ -51,6 +51,38 @@ Never force-load a module built for another kernel release. If BTF generation
 is skipped because `vmlinux` is unavailable, the module can still be usable;
 compiler or modpost errors are different and must be fixed.
 
+### Customize the no-signal image
+
+The no-signal image is embedded in `gc570d.ko`, so customize it before
+building or installing the module. The source must be a 640x360 PNG stored as
+`assets/no-signal.png`.
+
+To prepare another image without stretching it, install `ffmpeg` (which also
+provides `ffprobe`) and `xxd`, then run:
+
+```sh
+ffmpeg -v error -y -i /path/to/my-image.png \
+  -vf "scale=640:360:force_original_aspect_ratio=decrease:flags=lanczos,pad=640:360:(ow-iw)/2:(oh-ih)/2:color=black" \
+  assets/no-signal.png
+make no-signal
+```
+
+`make no-signal` immediately validates the exact dimensions and regenerates
+`data/gc570d_no_signal_640x360.inc` in the YUYV422 format used by the driver.
+It is optional: a normal build or installation also regenerates the embedded
+data automatically whenever `assets/no-signal.png` is newer. Then install
+normally:
+
+```sh
+sudo make install
+# Or, on Bazzite/Fedora Atomic:
+sudo ./scripts/install-portable.sh
+```
+
+Running `make no-signal` is unnecessary when using the supplied default.
+Only use artwork that you have the right to embed; if you redistribute the
+resulting module, the image must be distributable under compatible terms.
+
 ## Load from the checkout
 
 ```sh

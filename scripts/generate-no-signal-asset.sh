@@ -1,16 +1,19 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-2.0-only
-# Regenerate the compact YUYV thumbnail embedded by the kernel module.
+# Validate and regenerate the YUYV no-signal image embedded by the module.
 
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PROJECT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
-SOURCE="$PROJECT_DIR/assets/no-signal-penguin.png"
-OUTPUT="$PROJECT_DIR/data/gc570d_no_signal_320x180.inc"
+WIDTH=640
+HEIGHT=360
+SOURCE="$PROJECT_DIR/assets/no-signal.png"
+OUTPUT="$PROJECT_DIR/data/gc570d_no_signal_640x360.inc"
 WORK_DIR=$(mktemp -d)
-RAW="$WORK_DIR/no-signal-penguin-320x180.yuyv"
-ARRAY="$WORK_DIR/no-signal-penguin-320x180.inc"
+RAW="$WORK_DIR/no-signal-640x360.yuyv"
+ARRAY="$WORK_DIR/no-signal-640x360.inc"
+GENERATED="$WORK_DIR/gc570d_no_signal_640x360.inc"
 
 cleanup()
 {
@@ -22,6 +25,10 @@ command -v ffmpeg >/dev/null 2>&1 || {
 	echo "generate-no-signal-asset: ffmpeg is required" >&2
 	exit 1
 }
+command -v ffprobe >/dev/null 2>&1 || {
+	echo "generate-no-signal-asset: ffprobe is required" >&2
+	exit 1
+}
 command -v xxd >/dev/null 2>&1 || {
 	echo "generate-no-signal-asset: xxd is required" >&2
 	exit 1
@@ -31,8 +38,14 @@ command -v xxd >/dev/null 2>&1 || {
 	exit 1
 }
 
+DIMENSIONS=$(ffprobe -v error -select_streams v:0 \
+	-show_entries stream=width,height -of csv=s=x:p=0 "$SOURCE")
+[ "$DIMENSIONS" = "${WIDTH}x${HEIGHT}" ] || {
+	echo "generate-no-signal-asset: $SOURCE must be ${WIDTH}x${HEIGHT}, got $DIMENSIONS" >&2
+	exit 1
+}
+
 ffmpeg -v error -y -i "$SOURCE" \
-	-vf 'scale=320:180:flags=lanczos' \
 	-pix_fmt yuyv422 -f rawvideo "$RAW"
 
 xxd -i -n gc570d_no_signal_yuyv "$RAW" > "$ARRAY"
@@ -46,6 +59,7 @@ xxd -i -n gc570d_no_signal_yuyv "$RAW" > "$ARRAY"
 		}
 		{ print }
 	' "$ARRAY"
-} > "$OUTPUT"
+} > "$GENERATED"
+mv "$GENERATED" "$OUTPUT"
 
 printf 'generated %s (%s bytes raw)\n' "$OUTPUT" "$(wc -c < "$RAW")"

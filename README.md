@@ -88,8 +88,8 @@ Each source, script, and integration file starts with an SPDX
 | `src/gc570d-audio.c` | ALSA PCM devices and audio DMA |
 | `src/gc570d-led.c` | Multicolor LED-class device and enclosure effects |
 | `src/gc570d.h` | Shared registers, constants, state, and subsystem declarations |
-| `assets/` | Editable project artwork, including the generic no-signal frame |
-| `data/` | Generated/static data embedded by the driver: HDR LUT and compact YUYV no-signal frame |
+| `assets/` | Editable project artwork, including the replaceable 640x360 no-signal frame |
+| `data/` | Generated/static data embedded by the driver: HDR LUT and YUYV no-signal frame |
 | `scripts/` | Build-tree loading, installation, audio setup, status, and release checks |
 | `config/` | systemd autoload and system-wide WirePlumber policy |
 
@@ -139,6 +139,8 @@ sudo ./scripts/status.sh
 
 Detailed installation, capture, audio and RGB instructions are in
 [`docs/INSTALL.md`](docs/INSTALL.md) and [`docs/USAGE.md`](docs/USAGE.md).
+The no-signal image can be replaced before compilation; see
+[`docs/INSTALL.md`](docs/INSTALL.md#customize-the-no-signal-image).
 
 ## Installation choices
 
