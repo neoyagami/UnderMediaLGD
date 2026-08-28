@@ -7,10 +7,10 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PROJECT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 SOURCE="$PROJECT_DIR/assets/no-signal-penguin.png"
-OUTPUT="$PROJECT_DIR/data/gc570d_no_signal_320x180.inc"
+OUTPUT="$PROJECT_DIR/data/gc570d_no_signal_960x540.inc"
 WORK_DIR=$(mktemp -d)
-RAW="$WORK_DIR/no-signal-penguin-320x180.yuyv"
-ARRAY="$WORK_DIR/no-signal-penguin-320x180.inc"
+RAW="$WORK_DIR/no-signal-penguin-960x540.yuyv"
+ARRAY="$WORK_DIR/no-signal-penguin-960x540.inc"
 
 cleanup()
 {
@@ -32,7 +32,7 @@ command -v xxd >/dev/null 2>&1 || {
 }
 
 ffmpeg -v error -y -i "$SOURCE" \
-	-vf 'scale=320:180:flags=lanczos' \
+	-vf 'scale=960:540:flags=lanczos' \
 	-pix_fmt yuyv422 -f rawvideo "$RAW"
 
 xxd -i -n gc570d_no_signal_yuyv "$RAW" > "$ARRAY"

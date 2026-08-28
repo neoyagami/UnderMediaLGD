@@ -4,7 +4,7 @@
  * streaming control for both HDMI inputs.
  */
 #include "gc570d.h"
-#include "../data/gc570d_no_signal_320x180.inc"
+#include "../data/gc570d_no_signal_960x540.inc"
 
 #define GC570D_HDMI2_LINK_POLL_NS       (250ULL * NSEC_PER_MSEC)
 #define GC570D_HDMI2_HPD_DELAY_POLLS    4
@@ -214,6 +214,7 @@ static int gc570d_video_try_recover_live(struct gc570d_dev *gc,
 	bool source_5v;
 	bool scdt;
 	u64 now;
+	int audio_ret;
 	int ret;
 
 	if (!mutex_trylock(&gc->capture_lock))
@@ -273,17 +274,30 @@ static int gc570d_video_try_recover_live(struct gc570d_dev *gc,
 		goto out_unlock;
 	}
 
-	if (!gc->audio_prepared) {
-		ret = gc570d_it6802_output_enable(gc);
-		if (ret)
-			goto out_link_changed;
-		ret = gc570d_it6802_format_init(gc);
-		if (ret)
-			goto out_link_changed;
-	}
+	/*
+	 * This transition owns video-output recovery even when the HDMI IN 2
+	 * PCM is already prepared.  With a software placeholder active,
+	 * video_streaming is true but no receiver/VIP pixel path exists; ALSA
+	 * therefore cannot be used as evidence that the video transition ran.
+	 * Reapply StableOutput and the physical bus format before starting VIP1.
+	 */
+	ret = gc570d_it6802_output_enable(gc);
+	if (ret)
+		goto out_link_changed;
+	ret = gc570d_it6802_format_init(gc);
+	if (ret)
+		goto out_link_changed;
 	ret = gc570d_vip_init(gc);
 	if (ret)
 		goto out_link_changed;
+	/* StableOutput mutes the receiver; restore an independently open PCM. */
+	if (gc->audio_prepared) {
+		audio_ret = gc570d_it6802_audio_output_set(gc, true);
+		if (audio_ret)
+			dev_warn_ratelimited(&gc->pdev->dev,
+				"HDMI IN 2 video recovered but audio restore is pending: %d\n",
+				audio_ret);
+	}
 	if (readl(gc->bar0 + GC570D_DMA_DESC_CONTROL) & 0x1f) {
 		ret = -EBUSY;
 		goto out_warn;

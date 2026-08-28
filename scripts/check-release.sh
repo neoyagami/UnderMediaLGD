@@ -11,6 +11,7 @@ FAILED=false
 echo "Checking public release artifacts..."
 find "$PROJECT_DIR" \
 	-path "$PROJECT_DIR/.git" -prune -o \
+	-path "$PROJECT_DIR/assets/no-signal.png" -prune -o \
 	-path "$PROJECT_DIR/assets/no-signal-penguin.png" -prune -o \
 	-type f \( \
 		-iname '*.sys' -o -iname '*.dll' -o -iname '*.exe' -o \
@@ -26,6 +27,7 @@ find "$PROJECT_DIR" \
 
 PROHIBITED_COUNT=$(find "$PROJECT_DIR" \
 	-path "$PROJECT_DIR/.git" -prune -o \
+	-path "$PROJECT_DIR/assets/no-signal.png" -prune -o \
 	-path "$PROJECT_DIR/assets/no-signal-penguin.png" -prune -o \
 	-type f \( \
 		-iname '*.sys' -o -iname '*.dll' -o -iname '*.exe' -o \
@@ -59,9 +61,10 @@ for required in \
 	config/systemd/gc570d.service \
 	config/wireplumber/51-gc570d.conf \
 	assets/README.md \
+	assets/no-signal.png \
 	assets/no-signal-penguin.png \
 	data/gc570d_hdr_lut_3000.inc \
-	data/gc570d_no_signal_320x180.inc \
+	data/gc570d_no_signal_960x540.inc \
 	scripts/generate-no-signal-asset.sh
 do
 	if [ ! -f "$PROJECT_DIR/$required" ]; then
