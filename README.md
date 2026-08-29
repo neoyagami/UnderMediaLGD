@@ -1,4 +1,4 @@
-# UnderMediaLGD — experimental GC570D Linux driver
+# OpenGC570D — experimental GC570D Linux driver
 
 Unofficial Linux support for the AVerMedia Live Gamer DUO GC570D
 (`1461:0054`, subsystem `1461:5700`). The project exposes both HDMI inputs to
