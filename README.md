@@ -45,7 +45,7 @@ Validated on the project hardware:
 | --- | --- |
 | HDMI IN 1 passthrough | 3840x2160p60 SDR and HDR; 2560x1440p60 SDR and HDR; 2560x1440p120 HDR |
 | HDMI IN 1 high-resolution capture | 1440p60 SDR/HDR and measured 1440p120 HDR input converted to 1920x1080 YUYV SDR at 60 fps |
-| HDMI IN 1 native capture | 1280x720p60 SDR input captured as 1280x720 YUYV at 60 fps |
+| HDMI IN 1 native capture | 1280x720p60 SDR input captured as 1280x720 YUYV at 60 fps; 720x480p59.94/60 SDR input from a RetroScaler2x captured as 720x480 YUYV and displayed at its intended 4:3 aspect ratio |
 | HDMI IN 2 capture | 1920x1080 YUYV at 60 fps |
 | HDMI IN 1 audio | `HDMI 1 (Passthrough)`, ALSA capture device 1, stereo S16_LE at 48 kHz; direct ALSA and PipeWire validated, including automatic recovery on the same open audio stream after disconnect/reconnect |
 | HDMI IN 2 audio | `HDMI 2 (Capture Only)`, ALSA capture device 0, stereo S16_LE at 48 kHz; direct ALSA and PipeWire validated |
@@ -53,10 +53,15 @@ Validated on the project hardware:
 | Hot-plug and disconnected inputs | Both V4L2 nodes concurrently supply the built-in generic no-signal frame at 1920x1080 YUYV/60 fps without video DMA; HDMI IN 1 and HDMI IN 2 each physically passed a complete live-to-placeholder-to-live cycle on the same open V4L2 stream, including HDMI IN 1 video and audio recovery while HDMI IN 2 remained active |
 | RGB enclosure | Standard `gc570d:rgb:status` multicolor LED, fixed RGB, single-color breathing and red/yellow/green/cyan/blue/magenta/white breathing cycle |
 
+The 720x480 mode stores a 3:2 raster but represents 4:3 video through its
+non-square pixel aspect ratio. Testing also confirmed that only one client
+should negotiate the format of a V4L2 input at a time: multiple capture or
+PipeWire sources opened on the same input can request competing resolutions.
+
 Recovered but not yet fully validated: the remaining 1080p-or-lower input
-matrix, every source/monitor combination, VRR, and all advertised refresh
-rates. HDCP-protected content is unsupported. Capture output is SDR, capped at
-60 fps, and no larger than 1920x1080.
+matrix, including 720x576, every source/monitor combination, VRR, and all
+advertised refresh rates. HDCP-protected content is unsupported. Capture
+output is SDR, capped at 60 fps, and no larger than 1920x1080.
 
 ## Testing help wanted
 
